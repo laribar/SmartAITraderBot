@@ -51,12 +51,7 @@ def train_lstm_model(data, symbol="BTC-USD", timeframe="1h", window_size=20):
     # Adiciona para uso em tempo real
     model.scaler = scaler
     model.window_size = window_size
-    # Salvar o modelo LSTM e scaler
-    model_dir = f"models/lstm/{symbol}/{timeframe}"
-    os.makedirs(model_dir, exist_ok=True)
-    model.save(f"{model_dir}/lstm_model.h5")
-    joblib.dump(scaler, f"{model_dir}/scaler.pkl")
-    
+       
     print("✅ Modelo treinado com sucesso.")
     return model
 

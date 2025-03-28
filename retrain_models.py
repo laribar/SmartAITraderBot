@@ -31,7 +31,8 @@ for asset in ASSETS:
             df = calculate_indicators(get_stock_data(asset, interval, period))
 
             # Treinamento XGBoost
-            model = train_ml_model(df, verbose=True)
+            model = train_ml_model(df, symbol=asset, timeframe=interval, verbose=True)
+
             if model:
                 xgb_path = os.path.join(MODELS_DIR, f"xgb_{asset}_{interval}.pkl")
                 joblib.dump(model, xgb_path)

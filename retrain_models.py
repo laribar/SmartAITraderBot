@@ -1,80 +1,70 @@
-import os
+import numpy as np
+import pandas as pd
 import joblib
-import matplotlib.pyplot as plt
-from datetime import datetime
-from src.data import get_stock_data
-from src.indicators import calculate_indicators
-from src.train_xgb import train_ml_model
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from xgboost import XGBClassifier
 from src.train_lstm import train_lstm_model, predict_with_lstm
+from src.utils import get_feature_columns
 
-ASSETS = ["BTC-USD", "ETH-USD"]
-TIMEFRAMES = [
-    {"interval": "15m", "period": "30d"},
-    {"interval": "1h", "period": "90d"},
-    {"interval": "1d", "period": "1000d"}
-]
 
-# 📁 Diretório seguro para salvar
-BASE_DIR = os.getcwd()
-MODELS_DIR = os.path.join(BASE_DIR, "models")
-os.makedirs(MODELS_DIR, exist_ok=True)
+def train_ml_model(data, symbol, timeframe, verbose=False):
+    df = data.copy()
+    df["Future_Close"] = df["Close"].shift(-5)
+    df["Future_Return"] = df["Future_Close"] / df["Close"] - 1
+    df = df[(df["Future_Return"] > 0.015) | (df["Future_Return"] < -0.015)].copy()
+    df["Signal"] = np.where(df["Future_Return"] > 0.015, 1, 0)
 
-for asset in ASSETS:
-    print(f"\n🚀 Treinando modelos para {asset}...")
+    try:
+        lstm_model = train_lstm_model(df)
+        lstm_preds = [np.nan if i < 20 else predict_with_lstm(lstm_model, df.iloc[:i+1]) for i in range(len(df))]
+        df["LSTM_PRED"] = lstm_preds
+    except Exception as e:
+        print(f"⚠️ Erro ao treinar/predizer com LSTM: {e}")
+        df["LSTM_PRED"] = np.nan
 
-    for tf in TIMEFRAMES:
-        interval = tf["interval"]
-        period = tf["period"]
-        print(f"\n⏱️ Timeframe: {interval} | Período: {period}")
+    df.dropna(inplace=True)
+    X = df[get_feature_columns()]
+    y = df["Signal"]
 
-        try:
-            df = calculate_indicators(get_stock_data(asset, interval, period))
+    if len(np.unique(y)) < 2:
+        print("⚠️ Dados insuficientes para treino: apenas uma classe presente.")
+        return None
 
-            # Treinamento XGBoost
-            model = train_ml_model(df, symbol=asset, timeframe=interval, verbose=True)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
+    scale_pos_weight = len(y_train[y_train == 0]) / max(1, len(y_train[y_train == 1]))
 
-            if model:
-                xgb_path = os.path.join(MODELS_DIR, f"xgb_{asset}_{interval}.pkl")
-                joblib.dump(model, xgb_path)
-                print(f"✅ XGBoost salvo em {xgb_path}")
-            else:
-                print("⚠️ Modelo XGBoost não treinado.")
+    print(f"✅ Treino: {len(X_train)} | Validação: {len(X_val)}")
+    print(f"🔍 Classes em validação: {np.unique(y_val, return_counts=True)}")
 
-            # Treinamento LSTM
-            lstm_model = train_lstm_model(df)
-            if lstm_model:
-                lstm_path = os.path.join(MODELS_DIR, f"lstm_{asset}_{interval}.h5")
-                lstm_model.save(lstm_path)
-                print(f"✅ LSTM salvo em {lstm_path}")
-            else:
-                print("⚠️ Modelo LSTM não treinado.")
+    if len(X_val) == 0 or len(np.unique(y_val)) < 2:
+        print("❌ Validação insuficiente para early stopping.")
+        return None
 
-            # Visualização da previsão com LSTM
-            if lstm_model:
-                last_days = 60
-                df_plot = df.tail(last_days).copy()
-                predicted_prices = [predict_with_lstm(lstm_model, df_plot.iloc[:i+1])
-                                    if i >= 20 else None for i in range(len(df_plot))]
-                df_plot["LSTM_PRED"] = predicted_prices
+    model = XGBClassifier(
+        n_estimators=200,
+        max_depth=4,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        learning_rate=0.05,
+        early_stopping_rounds=10,
+        eval_metric="logloss",
+        use_label_encoder=False,
+        scale_pos_weight=scale_pos_weight,
+        random_state=42
+    )
 
-                plt.figure(figsize=(10, 4))
-                plt.plot(df_plot["Close"].values, label="Real")
-                plt.plot(df_plot["LSTM_PRED"].values, label="LSTM Previsto")
-                plt.title(f"{asset} - {interval} - Previsão com LSTM")
-                plt.legend()
-                plt.grid()
-                plt.tight_layout()
-                plt.show()
+    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=verbose)
 
-                from sklearn.metrics import mean_absolute_error, mean_squared_error
-                real = df_plot["Close"].values[20:]
-                pred = df_plot["LSTM_PRED"].dropna().values
-                if len(pred) == len(real):
-                    mae = mean_absolute_error(real, pred)
-                    mse = mean_squared_error(real, pred)
-                    print(f"📊 Avaliação LSTM: MAE = {mae:.2f}, MSE = {mse:.2f}")
+    y_pred = model.predict(X_val)
+    report = classification_report(y_val, y_pred, output_dict=True, zero_division=0)
+    model.validation_score = report
 
-        except Exception as e:
-            print(f"❌ Erro ao processar {asset} [{interval}]: {e}")
+    # 🔽 Salvando modelo
+    os.makedirs("models", exist_ok=True)
+    model_filename = f"models/xgb_{symbol}_{timeframe}.pkl"
+    joblib.dump(model, model_filename)
+    print(f"📦 Modelo salvo em: {model_filename}")
 
-print("\n✅ Treinamento finalizado para todos os ativos e timeframes.")
+    return model

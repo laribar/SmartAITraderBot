@@ -51,3 +51,9 @@ def load_latest_model(asset, interval, model_type="xgb"):
         return keras_load_model(latest_path)
     else:
         return joblib.load(latest_path)
+
+def save_model(model, symbol, timeframe, model_type="xgb"):
+    os.makedirs("models", exist_ok=True)
+    filename = f"models/{model_type}_{symbol}_{timeframe}.pkl"
+    joblib.dump(model, filename)
+    print(f"📦 Modelo salvo em: {filename}")

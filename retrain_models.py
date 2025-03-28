@@ -1,6 +1,7 @@
 import os
 import joblib
 import matplotlib.pyplot as plt
+from pathlib import Path
 from datetime import datetime
 from src.data import get_stock_data
 from src.indicators import calculate_indicators
@@ -32,18 +33,22 @@ for asset in ASSETS:
             # Treinamento XGBoost
             model = train_ml_model(df, symbol=asset, timeframe=interval, verbose=True)
             if model:
-                path = f"models/xgb_{asset}_{interval}.pkl"
-                joblib.dump(model, path)
-                print(f"✅ XGBoost salvo em {path}")
+                model_dir = Path(f"models/{asset}/{interval}")
+                model_dir.mkdir(parents=True, exist_ok=True)
+                joblib.dump(model, model_dir / "xgb_model.joblib")
+                print(f"✅ XGBoost salvo em {model_dir / 'xgb_model.joblib'}")
             else:
                 print("⚠️ Modelo XGBoost não treinado.")
 
             # Treinamento LSTM
             lstm_model = train_lstm_model(df)
             if lstm_model:
-                path = f"models/lstm_{asset}_{interval}.h5"
-                lstm_model.save(path)
-                print(f"✅ LSTM salvo em {path}")
+                lstm_dir = Path(f"models/{asset}/{interval}/lstm")
+                lstm_dir.mkdir(parents=True, exist_ok=True)
+                lstm_model.save(lstm_dir / "lstm_model.h5")
+                joblib.dump(lstm_model.scaler, lstm_dir / "scaler.pkl")
+                print(f"✅ LSTM salvo em {lstm_dir / 'lstm_model.h5'}")
+                print(f"✅ Scaler salvo em {lstm_dir / 'scaler.pkl'}")
             else:
                 print("⚠️ Modelo LSTM não treinado.")
 

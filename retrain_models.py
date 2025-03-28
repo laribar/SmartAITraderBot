@@ -14,8 +14,8 @@ TIMEFRAMES = [
     {"interval": "1d", "period": "1000d"}
 ]
 
-# Caminho absoluto para salvar os modelos
-BASE_DIR = os.getcwd()  # /content/SmartAITraderBot
+# 📁 Diretório seguro para salvar
+BASE_DIR = os.getcwd()
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -25,13 +25,12 @@ for asset in ASSETS:
     for tf in TIMEFRAMES:
         interval = tf["interval"]
         period = tf["period"]
-
         print(f"\n⏱️ Timeframe: {interval} | Período: {period}")
 
         try:
             df = calculate_indicators(get_stock_data(asset, interval, period))
 
-            # XGBoost
+            # Treinamento XGBoost
             model = train_ml_model(df, verbose=True)
             if model:
                 xgb_path = os.path.join(MODELS_DIR, f"xgb_{asset}_{interval}.pkl")
@@ -40,7 +39,7 @@ for asset in ASSETS:
             else:
                 print("⚠️ Modelo XGBoost não treinado.")
 
-            # LSTM
+            # Treinamento LSTM
             lstm_model = train_lstm_model(df)
             if lstm_model:
                 lstm_path = os.path.join(MODELS_DIR, f"lstm_{asset}_{interval}.h5")
@@ -49,7 +48,7 @@ for asset in ASSETS:
             else:
                 print("⚠️ Modelo LSTM não treinado.")
 
-            # Visualização simples
+            # Visualização da previsão com LSTM
             if lstm_model:
                 last_days = 60
                 df_plot = df.tail(last_days).copy()
@@ -65,6 +64,14 @@ for asset in ASSETS:
                 plt.grid()
                 plt.tight_layout()
                 plt.show()
+
+                from sklearn.metrics import mean_absolute_error, mean_squared_error
+                real = df_plot["Close"].values[20:]
+                pred = df_plot["LSTM_PRED"].dropna().values
+                if len(pred) == len(real):
+                    mae = mean_absolute_error(real, pred)
+                    mse = mean_squared_error(real, pred)
+                    print(f"📊 Avaliação LSTM: MAE = {mae:.2f}, MSE = {mse:.2f}")
 
         except Exception as e:
             print(f"❌ Erro ao processar {asset} [{interval}]: {e}")

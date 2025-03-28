@@ -1,4 +1,3 @@
-# retrain_models.py
 import os
 import joblib
 import matplotlib.pyplot as plt
@@ -15,7 +14,10 @@ TIMEFRAMES = [
     {"interval": "1d", "period": "1000d"}
 ]
 
-os.makedirs("models", exist_ok=True)
+# Caminho absoluto para salvar os modelos
+BASE_DIR = os.getcwd()  # /content/SmartAITraderBot
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+os.makedirs(MODELS_DIR, exist_ok=True)
 
 for asset in ASSETS:
     print(f"\n🚀 Treinando modelos para {asset}...")
@@ -27,28 +29,27 @@ for asset in ASSETS:
         print(f"\n⏱️ Timeframe: {interval} | Período: {period}")
 
         try:
-            # Coleta e indicadores
             df = calculate_indicators(get_stock_data(asset, interval, period))
 
-            # Treinamento XGBoost
+            # XGBoost
             model = train_ml_model(df, verbose=True)
             if model:
-                path = f"models/xgb_{asset}_{interval}.pkl"
-                joblib.dump(model, path)
-                print(f"✅ XGBoost salvo em {path}")
+                xgb_path = os.path.join(MODELS_DIR, f"xgb_{asset}_{interval}.pkl")
+                joblib.dump(model, xgb_path)
+                print(f"✅ XGBoost salvo em {xgb_path}")
             else:
                 print("⚠️ Modelo XGBoost não treinado.")
 
-            # Treinamento LSTM
+            # LSTM
             lstm_model = train_lstm_model(df)
             if lstm_model:
-                path = f"models/lstm_{asset}_{interval}.h5"
-                lstm_model.save(path)
-                print(f"✅ LSTM salvo em {path}")
+                lstm_path = os.path.join(MODELS_DIR, f"lstm_{asset}_{interval}.h5")
+                lstm_model.save(lstm_path)
+                print(f"✅ LSTM salvo em {lstm_path}")
             else:
                 print("⚠️ Modelo LSTM não treinado.")
 
-            # Plot previsão LSTM (visual)
+            # Visualização simples
             if lstm_model:
                 last_days = 60
                 df_plot = df.tail(last_days).copy()
@@ -64,15 +65,6 @@ for asset in ASSETS:
                 plt.grid()
                 plt.tight_layout()
                 plt.show()
-
-                # Avaliação simples
-                real = df_plot["Close"].values[20:]
-                pred = df_plot["LSTM_PRED"].dropna().values
-                if len(pred) == len(real):
-                    from sklearn.metrics import mean_absolute_error, mean_squared_error
-                    mae = mean_absolute_error(real, pred)
-                    mse = mean_squared_error(real, pred)
-                    print(f"📊 Avaliação LSTM: MAE = {mae:.2f}, MSE = {mse:.2f}")
 
         except Exception as e:
             print(f"❌ Erro ao processar {asset} [{interval}]: {e}")

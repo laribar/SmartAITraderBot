@@ -60,12 +60,6 @@ def train_ml_model(data, symbol: str, timeframe: str, verbose=False):
     report = classification_report(y_val, y_pred, output_dict=True, zero_division=0)
     model.validation_score = report
 
-    # 🔽 Salvando modelo
-    os.makedirs("models", exist_ok=True)
-    model_filename = f"models/{symbol}_{timeframe}_xgb_model.joblib"
-    joblib.dump(model, model_filename)
-    print(f"📦 Modelo salvo em: {model_filename}")
-    save_model(model, "XGBoost", symbol, timeframe)
-
+ 
     print("✅ Modelo treinado com sucesso.")
     return model

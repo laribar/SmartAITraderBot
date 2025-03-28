@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import joblib
@@ -7,7 +8,7 @@ from xgboost import XGBClassifier
 from src.train_lstm import train_lstm_model, predict_with_lstm
 from src.utils import get_feature_columns
 
-def train_ml_model(data, verbose=False):
+def train_ml_model(data, symbol: str, timeframe: str, verbose=False):
     df = data.copy()
     df["Future_Close"] = df["Close"].shift(-5)
     df["Future_Return"] = df["Future_Close"] / df["Close"] - 1
@@ -33,7 +34,6 @@ def train_ml_model(data, verbose=False):
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
     scale_pos_weight = len(y_train[y_train == 0]) / max(1, len(y_train[y_train == 1]))
 
-    # Verificação de sanidade dos dados
     print(f"✅ Treino: {len(X_train)} | Validação: {len(X_val)}")
     print(f"🔍 Classes em validação: {np.unique(y_val, return_counts=True)}")
     if len(X_val) == 0 or len(np.unique(y_val)) < 2:
@@ -58,5 +58,11 @@ def train_ml_model(data, verbose=False):
     y_pred = model.predict(X_val)
     report = classification_report(y_val, y_pred, output_dict=True, zero_division=0)
     model.validation_score = report
+
+    # 🔽 Salvando modelo
+    os.makedirs("models", exist_ok=True)
+    model_filename = f"models/{symbol}_{timeframe}_xgb_model.joblib"
+    joblib.dump(model, model_filename)
+    print(f"📦 Modelo salvo em: {model_filename}")
 
     return model

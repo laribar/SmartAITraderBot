@@ -67,4 +67,5 @@ def train_ml_model(data, symbol: str, timeframe: str, verbose=False):
     print(f"📦 Modelo salvo em: {model_filename}")
     save_model(model, "XGBoost", symbol, timeframe)
 
+    print("✅ Modelo treinado com sucesso.")
     return model

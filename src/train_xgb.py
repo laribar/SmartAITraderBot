@@ -33,6 +33,13 @@ def train_ml_model(data, verbose=False):
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
     scale_pos_weight = len(y_train[y_train == 0]) / max(1, len(y_train[y_train == 1]))
 
+    # Verificação de sanidade dos dados
+    print(f"✅ Treino: {len(X_train)} | Validação: {len(X_val)}")
+    print(f"🔍 Classes em validação: {np.unique(y_val, return_counts=True)}")
+    if len(X_val) == 0 or len(np.unique(y_val)) < 2:
+        print("❌ Validação insuficiente para early stopping.")
+        return None
+
     model = XGBClassifier(
         n_estimators=200,
         max_depth=4,
@@ -46,7 +53,6 @@ def train_ml_model(data, verbose=False):
         random_state=42
     )
 
-    # ✅ Correção: adicionar eval_set para que o early_stopping funcione
     model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=verbose)
 
     y_pred = model.predict(X_val)

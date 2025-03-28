@@ -7,6 +7,7 @@ from sklearn.metrics import classification_report
 from xgboost import XGBClassifier
 from src.train_lstm import train_lstm_model, predict_with_lstm
 from src.utils import get_feature_columns
+from src.model_registry import save_model  # certifique-se de importar
 
 def train_ml_model(data, symbol: str, timeframe: str, verbose=False):
     df = data.copy()
@@ -64,5 +65,6 @@ def train_ml_model(data, symbol: str, timeframe: str, verbose=False):
     model_filename = f"models/{symbol}_{timeframe}_xgb_model.joblib"
     joblib.dump(model, model_filename)
     print(f"📦 Modelo salvo em: {model_filename}")
+    save_model(model, "XGBoost", symbol, timeframe)
 
     return model

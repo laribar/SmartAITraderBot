@@ -18,7 +18,8 @@ def train_ml_model(data, verbose=False):
         lstm_model = train_lstm_model(df)
         lstm_preds = [np.nan if i < 20 else predict_with_lstm(lstm_model, df.iloc[:i+1]) for i in range(len(df))]
         df["LSTM_PRED"] = lstm_preds
-    except:
+    except Exception as e:
+        print(f"⚠️ Erro ao treinar/predizer com LSTM: {e}")
         df["LSTM_PRED"] = np.nan
 
     df.dropna(inplace=True)
@@ -26,6 +27,7 @@ def train_ml_model(data, verbose=False):
     y = df["Signal"]
 
     if len(np.unique(y)) < 2:
+        print("⚠️ Dados insuficientes para treino: apenas uma classe presente.")
         return None
 
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -43,8 +45,12 @@ def train_ml_model(data, verbose=False):
         scale_pos_weight=scale_pos_weight,
         random_state=42
     )
-    model.fit(X_train, y_train)
+
+    # ✅ Correção: adicionar eval_set para que o early_stopping funcione
+    model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=verbose)
+
     y_pred = model.predict(X_val)
     report = classification_report(y_val, y_pred, output_dict=True, zero_division=0)
     model.validation_score = report
+
     return model

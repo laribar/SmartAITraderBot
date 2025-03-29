@@ -8,6 +8,7 @@ from src.train_lstm import predict_with_lstm
 from src.utils import get_feature_columns
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
+import subprocess
 
 # ✅ Função utilitária para carregar o XGBoost
 def load_xgb_model(symbol, timeframe):
@@ -79,7 +80,19 @@ for asset in ASSETS:
             plt.legend()
             plt.grid()
             plt.tight_layout()
-            plt.show()
+            plot_path = Path(f"models/{asset}/{interval}/{asset}_{interval}_lstm_plot.png")
+            plt.savefig(plot_path)
+            print(f"🖼️ Plot salvo em: {plot_path}")
+            plt.close()
 
         except Exception as e:
             print(f"❌ Falha em {asset} [{interval}]: {e}")
+
+# ✅ Git auto-commit e push
+print("\n🚀 Enviando modelos salvos para o GitHub...")
+try:
+    subprocess.run(["git", "add", "models"], check=True)
+    subprocess.run(["git", "commit", "-m", "feat: adiciona modelos treinados automaticamente"], check=True)
+    subprocess.run(["git", "push"], check=True)
+except subprocess.CalledProcessError as e:
+    print(f"❌ Falha ao subir para o GitHub: {e}")

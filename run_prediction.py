@@ -10,6 +10,7 @@ from src.utils import get_feature_columns
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import csv
+import subprocess
 
 # ✅ Função utilitária para carregar o XGBoost
 def load_xgb_model(symbol, timeframe):
@@ -90,3 +91,13 @@ with alerts_file.open("w", newline="") as csvfile:
                 print(f"❌ Falha em {asset} [{interval}]: {e}")
 
 print(f"\n✅ Alertas salvos em: {alerts_file}")
+
+# 🔄 Push automático para o GitHub
+try:
+    subprocess.run(["git", "pull", "--rebase"], check=True)
+    subprocess.run(["git", "add", "alerts"], check=True)
+    subprocess.run(["git", "commit", "-m", "feat: adiciona alertas gerados automaticamente"], check=True)
+    subprocess.run(["git", "push"], check=True)
+    print("🚀 Alertas enviados para o GitHub!")
+except subprocess.CalledProcessError as e:
+    print(f"❌ Falha ao subir alertas para o GitHub: {e}")

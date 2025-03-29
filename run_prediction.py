@@ -34,6 +34,7 @@ TIMEFRAMES = ["15m", "1h", "1d"]
 datahora = datetime.now().strftime("%Y-%m-%d_%H-%M")
 alerts_file = Path(f"alerts/alerts_{datahora}.csv")
 alerts_file.parent.mkdir(exist_ok=True)
+
 with alerts_file.open("w", newline="") as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["timestamp", "symbol", "timeframe", "model", "sinal", "confianca", "preco_atual", "previsao_lstm"])
@@ -66,6 +67,9 @@ with alerts_file.open("w", newline="") as csvfile:
                 ]
 
                 df.dropna(inplace=True)
+                if df.empty:
+                    raise ValueError("Dados insuficientes após aplicar janela do LSTM.")
+
                 latest = df.iloc[-1:]
 
                 # XGBoost
@@ -81,6 +85,19 @@ with alerts_file.open("w", newline="") as csvfile:
                 current_price = latest["Close"].values[0]
                 print(f"🔮 LSTM preço atual: ${current_price:.2f} | Previsão: ${lstm_pred:.2f}")
 
+                # Plot
+                plot_path = Path(f"models/{asset}/{interval}/{asset}_{interval}_lstm_plot.png")
+                plt.figure(figsize=(10, 4))
+                plt.plot(df["Close"].values[-50:], label="Real")
+                plt.axhline(lstm_pred, color='orange', linestyle='--', label='LSTM Previsto')
+                plt.title(f"{asset} - {interval} - Previsão")
+                plt.legend()
+                plt.grid()
+                plt.tight_layout()
+                plt.savefig(plot_path)
+                plt.close()
+                print(f"🖼️ Plot salvo em: {plot_path}")
+
                 # Salvando alerta
                 writer.writerow([
                     datetime.now().strftime("%Y-%m-%d %H:%M:%S"), asset, interval, "XGBoost", signal,
@@ -92,12 +109,11 @@ with alerts_file.open("w", newline="") as csvfile:
 
 print(f"\n✅ Alertas salvos em: {alerts_file}")
 
-# 🔄 Push automático para o GitHub
+# 🚀 Subir para o GitHub
 try:
-    subprocess.run(["git", "pull", "--rebase"], check=True)
-    subprocess.run(["git", "add", "alerts"], check=True)
-    subprocess.run(["git", "commit", "-m", "feat: adiciona alertas gerados automaticamente"], check=True)
+    subprocess.run(["git", "pull"], check=True)
+    subprocess.run(["git", "add", str(alerts_file)], check=True)
+    subprocess.run(["git", "commit", "-m", "feat: adiciona novo alerta gerado automaticamente"], check=True)
     subprocess.run(["git", "push"], check=True)
-    print("🚀 Alertas enviados para o GitHub!")
 except subprocess.CalledProcessError as e:
-    print(f"❌ Falha ao subir alertas para o GitHub: {e}")
+    print(f"❌ Falha ao subir para o GitHub: {e}")

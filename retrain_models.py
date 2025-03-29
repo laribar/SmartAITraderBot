@@ -1,97 +1,99 @@
-import os
 import joblib
+import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
-from datetime import datetime
 from src.data import get_stock_data
 from src.indicators import calculate_indicators
-from src.train_xgb import train_ml_model
-from src.train_lstm import train_lstm_model, predict_with_lstm
+from src.train_lstm import predict_with_lstm
+from src.utils import get_feature_columns
+from tensorflow.keras.models import load_model
+from sklearn.preprocessing import MinMaxScaler
+import subprocess
+
+# ✅ Função utilitária para carregar o XGBoost
+def load_xgb_model(symbol, timeframe):
+    paths = [
+        Path(f"models/{symbol}/{timeframe}/xgb_model.joblib"),
+        Path(f"models/xgb_{symbol}_{timeframe}.pkl"),
+        Path(f"models/{symbol}_{timeframe}_xgb_model.joblib"),
+    ]
+
+    for path in paths:
+        if path.exists():
+            print(f"✅ Modelo XGBoost carregado: {path}")
+            return joblib.load(path)
+
+    raise FileNotFoundError(f"❌ Modelo XGBoost não encontrado para {symbol} [{timeframe}]")
 
 ASSETS = ["BTC-USD", "ETH-USD"]
-TIMEFRAMES = [
-    {"interval": "15m", "period": "30d"},
-    {"interval": "1h", "period": "90d"},
-    {"interval": "1d", "period": "1000d"}
-]
-
-# Caminho absoluto para o repositório clonado no GitHub (dentro do Colab)
-GITHUB_REPO_DIR = Path("/content/SmartAITraderBot")
-MODELS_DIR = GITHUB_REPO_DIR / "models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+TIMEFRAMES = ["15m", "1h", "1d"]
 
 for asset in ASSETS:
-    print(f"\n🚀 Treinando modelos para {asset}...")
+    print(f"\n🔍 Previsão para {asset}")
 
-    for tf in TIMEFRAMES:
-        interval = tf["interval"]
-        period = tf["period"]
-
-        print(f"\n⏱️ Timeframe: {interval} | Período: {period}")
+    for interval in TIMEFRAMES:
+        print(f"\n⏱️ Timeframe: {interval}")
 
         try:
-            # Coleta e indicadores
-            df = calculate_indicators(get_stock_data(asset, interval, period))
+            # Carregar dados e indicadores
+            df = calculate_indicators(get_stock_data(asset, interval=interval, period="30d"))
+            features = get_feature_columns()
 
-            # Treinamento XGBoost
-            model = train_ml_model(df, symbol=asset, timeframe=interval, verbose=True)
-            if model:
-                model_dir = MODELS_DIR / asset / interval
-                model_dir.mkdir(parents=True, exist_ok=True)
-                joblib.dump(model, model_dir / "xgb_model.joblib")
-                print(f"✅ XGBoost salvo em {model_dir / 'xgb_model.joblib'}")
-            else:
-                print("⚠️ Modelo XGBoost não treinado.")
+            # Carregar e prever com LSTM
+            lstm_path = Path(f"models/{asset}/{interval}/lstm/lstm_model.h5")
+            scaler_path = Path(f"models/{asset}/{interval}/lstm/scaler.pkl")
 
-            # Treinamento LSTM
-            lstm_model = train_lstm_model(df)
-            if lstm_model:
-                lstm_dir = MODELS_DIR / asset / interval / "lstm"
-                lstm_dir.mkdir(parents=True, exist_ok=True)
-                lstm_model.save(lstm_dir / "lstm_model.h5")
-                joblib.dump(lstm_model.scaler, lstm_dir / "scaler.pkl")
-                print(f"✅ LSTM salvo em {lstm_dir / 'lstm_model.h5'}")
-                print(f"✅ Scaler salvo em {lstm_dir / 'scaler.pkl'}")
-            else:
-                print("⚠️ Modelo LSTM não treinado.")
+            if not lstm_path.exists() or not scaler_path.exists():
+                raise FileNotFoundError("Modelo LSTM ou scaler não encontrado.")
 
-            # Plot previsão LSTM (visual)
-            if lstm_model:
-                last_days = 60
-                df_plot = df.tail(last_days).copy()
-                predicted_prices = [predict_with_lstm(lstm_model, df_plot.iloc[:i+1])
-                                    if i >= 20 else None for i in range(len(df_plot))]
-                df_plot["LSTM_PRED"] = predicted_prices
+            lstm_model = load_model(lstm_path)
+            lstm_model.window_size = 20
+            lstm_model.scaler = joblib.load(scaler_path)
 
-                plt.figure(figsize=(10, 4))
-                plt.plot(df_plot["Close"].values, label="Real")
-                plt.plot(df_plot["LSTM_PRED"].values, label="LSTM Previsto")
-                plt.title(f"{asset} - {interval} - Previsão com LSTM")
-                plt.legend()
-                plt.grid()
-                plt.tight_layout()
-                plt.savefig(model_dir / f"{asset}_{interval}_lstm_plot.png")
-                plt.close()
+            # Previsão LSTM incremental
+            df["LSTM_PRED"] = [
+                predict_with_lstm(lstm_model, df.iloc[:i+1])
+                if i >= lstm_model.window_size else None
+                for i in range(len(df))
+            ]
 
-                # Avaliação simples
-                real = df_plot["Close"].values[20:]
-                pred = df_plot["LSTM_PRED"].dropna().values
-                if len(pred) == len(real):
-                    from sklearn.metrics import mean_absolute_error, mean_squared_error
-                    mae = mean_absolute_error(real, pred)
-                    mse = mean_squared_error(real, pred)
-                    print(f"📊 Avaliação LSTM: MAE = {mae:.2f}, MSE = {mse:.2f}")
+            df.dropna(inplace=True)
+            latest = df.iloc[-1:]
+
+            # Carregar modelo XGBoost
+            model = load_xgb_model(asset, interval)
+            prediction = model.predict(latest[features])[0]
+            proba = model.predict_proba(latest[features])[0][prediction]
+
+            print(f"🤖 XGBoost sinal: {'COMPRA' if prediction==1 else 'VENDA'} ({proba*100:.2f}% confiança)")
+
+            # Previsão LSTM atual
+            lstm_pred = latest["LSTM_PRED"].values[0]
+            current_price = latest["Close"].values[0]
+            print(f"🔮 LSTM preço atual: ${current_price:.2f} | Previsão: ${lstm_pred:.2f}")
+
+            # Plot
+            plt.figure(figsize=(10, 4))
+            plt.plot(df["Close"].values[-50:], label="Real")
+            plt.plot(df["LSTM_PRED"].values[-50:], label="LSTM Previsto", linestyle='--')
+            plt.title(f"{asset} - {interval} - Previsão")
+            plt.legend()
+            plt.grid()
+            plt.tight_layout()
+            plot_path = Path(f"models/{asset}/{interval}/{asset}_{interval}_lstm_plot.png")
+            plot_path.parent.mkdir(parents=True, exist_ok=True)
+            plt.savefig(plot_path)
+            print(f"🖼️ Plot salvo em: {plot_path}")
+            plt.close()
 
         except Exception as e:
-            print(f"❌ Erro ao processar {asset} [{interval}]: {e}")
+            print(f"❌ Falha em {asset} [{interval}]: {e}")
 
-print("\n✅ Treinamento finalizado para todos os ativos e timeframes.")
-
-# 🚀 Commit automático para o GitHub
+# ✅ Git auto-commit e push
 print("\n🚀 Enviando modelos salvos para o GitHub...")
-os.system("git config --global user.email 'barbarotolarissa@gmail.com'")
-os.system("git config --global user.name 'Larissa Barbaroto'")
-os.chdir(GITHUB_REPO_DIR)
-os.system("git add models/")
-os.system("git commit -m 'feat: adiciona modelos treinados automaticamente'")
-os.system("git push origin main")
+try:
+    subprocess.run(["git", "add", "models"], check=True)
+    subprocess.run(["git", "commit", "-m", "feat: adiciona modelos treinados automaticamente"], check=True)
+    subprocess.run(["git", "push"], check=True)
+except subprocess.CalledProcessError as e:
+    print(f"❌ Falha ao subir para o GitHub: {e}")

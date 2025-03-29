@@ -1,10 +1,28 @@
 import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 from src.data import get_stock_data
 from src.indicators import calculate_indicators
 from src.train_lstm import predict_with_lstm
 from src.utils import get_feature_columns
+from tensorflow.keras.models import load_model
+from sklearn.preprocessing import MinMaxScaler
+
+# ✅ Função utilitária para carregar o XGBoost
+def load_xgb_model(symbol, timeframe):
+    paths = [
+        Path(f"models/{symbol}/{timeframe}/xgb_model.joblib"),
+        Path(f"models/xgb_{symbol}_{timeframe}.pkl"),
+        Path(f"models/{symbol}_{timeframe}_xgb_model.joblib"),
+    ]
+
+    for path in paths:
+        if path.exists():
+            print(f"✅ Modelo XGBoost carregado: {path}")
+            return joblib.load(path)
+
+    raise FileNotFoundError(f"❌ Modelo XGBoost não encontrado para {symbol} [{timeframe}]")
 
 ASSETS = ["BTC-USD", "ETH-USD"]
 TIMEFRAMES = ["15m", "1h", "1d"]
@@ -22,23 +40,22 @@ for asset in ASSETS:
             features = get_feature_columns()
 
             # Carregar modelo XGBoost
-            model_path = f"models/xgb_{asset}_{interval}.pkl"
-            model = joblib.load(model_path)
+            model = load_xgb_model(asset, interval)
             prediction = model.predict(latest[features])[0]
             proba = model.predict_proba(latest[features])[0][prediction]
 
             print(f"🤖 XGBoost sinal: {'COMPRA' if prediction==1 else 'VENDA'} ({proba*100:.2f}% confiança)")
 
             # Carregar e prever com LSTM
-            from tensorflow.keras.models import load_model
-            lstm_path = f"models/lstm_{asset}_{interval}.h5"
-            lstm_model = load_model(lstm_path)
-            lstm_model.window_size = 20  # Padrão do treino
+            lstm_path = Path(f"models/{asset}/{interval}/lstm/lstm_model.h5")
+            scaler_path = Path(f"models/{asset}/{interval}/lstm/scaler.pkl")
 
-            from sklearn.preprocessing import MinMaxScaler
-            _, _, scaler = df["Close"].values.reshape(-1, 1), None, MinMaxScaler()
-            scaler.fit(df["Close"].values.reshape(-1, 1))
-            lstm_model.scaler = scaler
+            if not lstm_path.exists() or not scaler_path.exists():
+                raise FileNotFoundError("Modelo LSTM ou scaler não encontrado.")
+
+            lstm_model = load_model(lstm_path)
+            lstm_model.window_size = 20
+            lstm_model.scaler = joblib.load(scaler_path)
 
             lstm_pred = predict_with_lstm(lstm_model, df)
             current_price = df["Close"].iloc[-1]

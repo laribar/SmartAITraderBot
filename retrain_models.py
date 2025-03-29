@@ -92,7 +92,7 @@ for asset in ASSETS:
 # ✅ Git auto-commit e push
 print("\n🚀 Enviando modelos salvos para o GitHub...")
 try:
-    subprocess.run(["git", "add", "models"], check=True)
+    subprocess.run(["git", "add", "--all", "models"], check=True)
     subprocess.run(["git", "commit", "-m", "feat: adiciona modelos treinados automaticamente"], check=True)
     subprocess.run(["git", "pull", "--rebase"], check=True)
     subprocess.run(["git", "push"], check=True)

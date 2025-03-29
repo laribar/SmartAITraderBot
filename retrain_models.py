@@ -15,7 +15,10 @@ TIMEFRAMES = [
     {"interval": "1d", "period": "1000d"}
 ]
 
-os.makedirs("models", exist_ok=True)
+# Caminho absoluto para o repositório clonado no GitHub (dentro do Colab)
+GITHUB_REPO_DIR = Path("/content/SmartAITraderBot")
+MODELS_DIR = GITHUB_REPO_DIR / "models"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 for asset in ASSETS:
     print(f"\n🚀 Treinando modelos para {asset}...")
@@ -33,7 +36,7 @@ for asset in ASSETS:
             # Treinamento XGBoost
             model = train_ml_model(df, symbol=asset, timeframe=interval, verbose=True)
             if model:
-                model_dir = Path(f"models/{asset}/{interval}")
+                model_dir = MODELS_DIR / asset / interval
                 model_dir.mkdir(parents=True, exist_ok=True)
                 joblib.dump(model, model_dir / "xgb_model.joblib")
                 print(f"✅ XGBoost salvo em {model_dir / 'xgb_model.joblib'}")
@@ -43,7 +46,7 @@ for asset in ASSETS:
             # Treinamento LSTM
             lstm_model = train_lstm_model(df)
             if lstm_model:
-                lstm_dir = Path(f"models/{asset}/{interval}/lstm")
+                lstm_dir = MODELS_DIR / asset / interval / "lstm"
                 lstm_dir.mkdir(parents=True, exist_ok=True)
                 lstm_model.save(lstm_dir / "lstm_model.h5")
                 joblib.dump(lstm_model.scaler, lstm_dir / "scaler.pkl")
@@ -67,7 +70,8 @@ for asset in ASSETS:
                 plt.legend()
                 plt.grid()
                 plt.tight_layout()
-                plt.show()
+                plt.savefig(model_dir / f"{asset}_{interval}_lstm_plot.png")
+                plt.close()
 
                 # Avaliação simples
                 real = df_plot["Close"].values[20:]

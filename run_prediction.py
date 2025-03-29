@@ -117,3 +117,14 @@ try:
     subprocess.run(["git", "push"], check=True)
 except subprocess.CalledProcessError as e:
     print(f"❌ Falha ao subir para o GitHub: {e}")
+
+# ✅ Subir também o relatório de avaliação, se existir
+eval_file = Path("alerts/evaluation_result.csv")
+if eval_file.exists():
+    try:
+        subprocess.run(["git", "add", str(eval_file)], check=True)
+        subprocess.run(["git", "commit", "-m", "chore: adiciona avaliação de performance dos alertas"], check=True)
+        subprocess.run(["git", "push"], check=True)
+        print("📈 Avaliação de performance enviada para o GitHub.")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Falha ao subir avaliação para o GitHub: {e}")

@@ -86,3 +86,12 @@ for asset in ASSETS:
             print(f"❌ Erro ao processar {asset} [{interval}]: {e}")
 
 print("\n✅ Treinamento finalizado para todos os ativos e timeframes.")
+
+# 🚀 Commit automático para o GitHub
+print("\n🚀 Enviando modelos salvos para o GitHub...")
+os.system("git config --global user.email 'barbarotolarissa@gmail.com'")
+os.system("git config --global user.name 'Larissa Barbaroto'")
+os.chdir(GITHUB_REPO_DIR)
+os.system("git add models/")
+os.system("git commit -m 'feat: adiciona modelos treinados automaticamente'")
+os.system("git push origin main")

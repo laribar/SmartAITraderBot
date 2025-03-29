@@ -57,6 +57,16 @@ for asset in ASSETS:
             lstm_model.window_size = 20
             lstm_model.scaler = joblib.load(scaler_path)
 
+            # Gerar previsões LSTM para os últimos dias
+            last_days = 60
+            df_plot = df.tail(last_days).copy()
+            predicted_prices = [
+                predict_with_lstm(lstm_model, df_plot.iloc[:i+1])
+                if i >= lstm_model.window_size else None
+                for i in range(len(df_plot))
+            ]
+            df_plot["LSTM_PRED"] = predicted_prices
+
             lstm_pred = predict_with_lstm(lstm_model, df)
             current_price = df["Close"].iloc[-1]
 
@@ -64,8 +74,8 @@ for asset in ASSETS:
 
             # Plot
             plt.figure(figsize=(10, 4))
-            plt.plot(df["Close"].values[-50:], label="Real")
-            plt.axhline(lstm_pred, color='orange', linestyle='--', label='LSTM Previsto')
+            plt.plot(df_plot["Close"].values, label="Real")
+            plt.plot(df_plot["LSTM_PRED"].values, label="LSTM Previsto", linestyle='--')
             plt.title(f"{asset} - {interval} - Previsão")
             plt.legend()
             plt.grid()

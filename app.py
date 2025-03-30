@@ -56,14 +56,17 @@ with st.spinner("Carregando dados e modelos..."):
         lstm_pred = predict_with_lstm(lstm_model, df)
         current_price = df["Close"].iloc[-1]
 
+        # 🔧 Corrigido: adicionar a previsão ao DataFrame
+        df.loc[df.index[-1], "LSTM_PRED"] = lstm_pred
+
         col1, col2 = st.columns(2)
         with col1:
             st.metric("🔍 XGBoost Sinal", sinal, f"Confiança: {proba*100:.2f}%")
         with col2:
-            st.metric("🔮 LSTM Previsão", f"${lstm_pred:.2f}", f"Atual: ${current_price:.2f}")
+            st.metric("🔮 LSTM Preço Previsto", f"${lstm_pred:.2f}", f"Atual: ${current_price:.2f}")
 
-        # Gráfico
-        st.line_chart(df["Close"].tail(50), use_container_width=True)
+        # Gráfico (corrigido para não depender de LSTM_PRED diretamente)
+        st.line_chart(df[["Close"]].tail(50), use_container_width=True)
 
     except Exception as e:
         st.error(f"❌ Erro ao processar os dados: {e}")

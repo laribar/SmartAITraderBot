@@ -60,10 +60,3 @@ with st.spinner("Carregando modelos e dados..."):
 
     except Exception as e:
         st.error(f"❌ Erro ao carregar dados/modelo: {e}")
-
-
-# Salvar o conteúdo no app.py
-with open("app.py", "w", encoding="utf-8") as f:
-    f.write(app_code.strip())
-
-app_code.strip()

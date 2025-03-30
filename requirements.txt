@@ -3,7 +3,7 @@ numpy>=1.21
 matplotlib>=3.4
 scikit-learn>=1.0
 xgboost>=1.6
-tensorflow>=2.12
+tensorflow==2.11.0
 ta>=0.10.2
 requests>=2.26
 yfinance>=0.2

@@ -14,8 +14,8 @@ import json
 # === CONFIGURAÇÕES ===
 ASSETS = ["BTC-USD", "ETH-USD"]
 TIMEFRAMES = ["15m", "1h", "1d"]
-TELEGRAM_TOKEN = "COLE_SEU_TOKEN_AQUI"
-TELEGRAM_CHAT_ID = "COLE_SEU_CHAT_ID_AQUI"
+TELEGRAM_TOKEN = "8044593190:AAFtUWYHd3uqd-AtQi3uqg42F9G6uV95v8k"
+TELEGRAM_CHAT_ID = "-4744645054"
 ALERTS_PATH = Path("data/alerts_log.csv")
 
 # === Funções utilitárias ===

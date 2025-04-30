@@ -1,12 +1,13 @@
 pandas
-numpy
+numpy==1.26.4
 matplotlib
 ta
 yfinance
 requests
 scikit-learn
-xgboost
 tensorflow
 joblib
 pytz
 mplfinance
+scipy==1.12.0
+xgboost==2.0.3

@@ -44,14 +44,14 @@ import joblib
 from tensorflow.keras.models import load_model
 
 # Criar pasta onde os modelos serão salvos
-os.makedirs("/content/models", exist_ok=True)
+os.makedirs("models", exist_ok=True)
 # ====================================================
 # BLOCO 2 - SALVAR E CARREGAR MODELOS TREINADOS
 # ====================================================
 def get_model_path(asset, interval, model_type="xgb"):
   asset_clean = asset.replace("-", "")
   ext = "joblib" if model_type == "xgb" else "h5"
-  return f"/content/models/{model_type}_model_{asset_clean}_{interval}.{ext}"
+  return f"models/{model_type}_model_{asset_clean}_{interval}.{ext}"
 
 # --- XGBoost ---
 def save_xgb_model(model, asset, interval):
@@ -232,7 +232,7 @@ def safe_read_csv(filepath):
       print(f"⚠️ Erro inesperado ao ler CSV: {e}")
       return None
 
-def criar_prediction_log_padrao(filepath="/content/prediction_log.csv", backup_dir="/content/prediction_backups"):
+def criar_prediction_log_padrao(filepath="prediction_log.csv", backup_dir="prediction_backups"):
     import pandas as pd
     import os
     from datetime import datetime
@@ -821,7 +821,7 @@ import os
 import glob
 
 def limpar_model_results():
-    arquivos = glob.glob("/content/model_results_*.csv")
+    arquivos = glob.glob("model_results_*.csv")
     if not arquivos:
         print("📂 Nenhum arquivo model_results_*.csv encontrado.")
         return
@@ -834,7 +834,7 @@ def plot_entrada_lstm(df, feature_cols):
     plt.tight_layout()
     plt.show()
 
-def gerar_resumo_ultimos_sinais(asset, interval, n=15, path="/content/prediction_log.csv"):
+def gerar_resumo_ultimos_sinais(asset, interval, n=15, path="prediction_log.csv"):
     df_log = safe_read_csv(path)
     if df_log is None or df_log.empty:
         return "📭 Sem sinais anteriores registrados."
@@ -863,7 +863,7 @@ def gerar_resumo_ultimos_sinais(asset, interval, n=15, path="/content/prediction
     return "📊 <b>Últimos Sinais:</b>\n" + "\n".join(linhas)
 
 
-def gerar_ranking_lucro(path="/content/prediction_log.csv", top_n=5):
+def gerar_ranking_lucro(path="prediction_log.csv", top_n=5):
     df = safe_read_csv(path)
     if df is None or df.empty or "LucroEstimado" not in df.columns:
         return "📭 Sem dados de lucro disponíveis."
@@ -878,7 +878,7 @@ def gerar_ranking_lucro(path="/content/prediction_log.csv", top_n=5):
         linhas.append(f"{emoji} {ativo}: ${lucro:+.2f}")
     return "\n".join(linhas)
 
-def gerar_resumo_por_padrao(asset, interval, path="/content/prediction_log.csv"):
+def gerar_resumo_por_padrao(asset, interval, path="prediction_log.csv"):
     df = safe_read_csv(path)
     if df is None or df.empty:
         return "📭 Sem sinais anteriores registrados."
@@ -996,8 +996,8 @@ def enviar_grafico_previsao_futura(df_previsao, timeframe, asset):
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d/%m %H:%M', tz=BR_TZ))
     plt.xticks(rotation=45)
 
-    # 🔥 Novo: salvar o gráfico em /content/
-    image_path = f"/content/projecao_futura_{asset.replace('-', '')}_{timeframe}.png"
+    # 🔥 Novo: salvar o gráfico em 
+    image_path = f"projecao_futura_{asset.replace('-', '')}_{timeframe}.png"
     plt.savefig(image_path)
     print(f"💾 Gráfico salvo em: {image_path}")
 
@@ -1044,7 +1044,7 @@ def plotar_candles_com_previsao(
 ):
     """
     Plota 10 candles reais + previsões futuras com mplfinance (candlestick),
-    salva o gráfico no /content/ e também exibe no terminal.
+    salva o gráfico no  e também exibe no terminal.
     """
 
     # 🛠️ Garantir que 'Date' é datetime
@@ -1090,8 +1090,8 @@ def plotar_candles_com_previsao(
     mc = mpf.make_marketcolors(up='g', down='r', inherit=True)
     s = mpf.make_mpf_style(marketcolors=mc, gridstyle=':', facecolor='white')
 
-    # 📁 Caminho para salvar no /content/
-    save_path = f"/content/candle_proj_{asset.replace('-', '')}_{timeframe}.png"
+    # 📁 Caminho para salvar no 
+    save_path = f"candle_proj_{asset.replace('-', '')}_{timeframe}.png"
 
     # 📈 Salvar e também exibir
     mpf.plot(df_plot, type='candle', style=s,
@@ -1152,7 +1152,7 @@ def calculate_targets(price_row, signal, atr_multiplier=0.02, min_dist_percent=0
 
 def log_previsao_absurda(asset, interval, preco_atual, close_previsto):
     try:
-        path = "/content/previsoes_descartadas.csv"
+        path = "previsoes_descartadas.csv"
         row = {
             "Data": datetime.now(BR_TZ).strftime("%Y-%m-%d %H:%M:%S"),
             "Asset": asset,
@@ -1226,7 +1226,7 @@ def predict_next_closes(data, n_steps=5):
     return preds
 
 
-def evaluate_past_predictions(results_file="/content/prediction_log.csv", lookahead_candles=5):
+def evaluate_past_predictions(results_file="prediction_log.csv", lookahead_candles=5):
     import os
     import pandas as pd
     import yfinance as yf
@@ -1337,7 +1337,7 @@ def evaluate_past_predictions(results_file="/content/prediction_log.csv", lookah
 
 
 
-def clear_models(model_dir="/content/models"):
+def clear_models(model_dir="models"):
     import shutil
 
     if os.path.exists(model_dir):
@@ -1350,7 +1350,7 @@ def clear_models(model_dir="/content/models"):
 
 
 
-def plot_prediction_performance_por_timeframe(log_path="/content/prediction_log.csv"):
+def plot_prediction_performance_por_timeframe(log_path="prediction_log.csv"):
     if not os.path.exists(log_path):
         print("📭 Nenhum log encontrado.")
         return
@@ -1430,7 +1430,7 @@ def enviar_graficos_desempenho_por_timeframe():
                 r = requests.post(url, data=data, files=files)
                 print(f"✅ Enviado: erro_absoluto_{tf}.png")
 
-def enviar_grafico_lucro_por_confianca(log_path="/content/prediction_log.csv"):
+def enviar_grafico_lucro_por_confianca(log_path="prediction_log.csv"):
     import matplotlib.pyplot as plt
 
     if not os.path.exists(log_path):
@@ -1495,7 +1495,7 @@ def adjust_signal_based_on_history(asset, timeframe, max_lookback=20, min_signal
         print(f"⚠️ Erro ao ajustar com histórico: {e}")
         return 1.0
 
-def gerar_grafico_previsao_vs_real(log_path="/content/prediction_log.csv", output_path="/tmp/previsao_vs_real.png"):
+def gerar_grafico_previsao_vs_real(log_path="prediction_log.csv", output_path="/tmp/previsao_vs_real.png"):
     import matplotlib.pyplot as plt
 
     df = safe_read_csv(log_path)
@@ -1640,13 +1640,13 @@ def to_scalar(val):
         return np.nan
 
 
-def salvar_carteira_virtual(filepath="/content/carteira_virtual.json"):
+def salvar_carteira_virtual(filepath="carteira_virtual.json"):
     with open(filepath, "w") as f:
         json.dump(carteira_virtual, f)
     print(f"💾 Carteira virtual salva em: {filepath}")
 
 
-def carregar_carteira_virtual(filepath="/content/carteira_virtual.json"):
+def carregar_carteira_virtual(filepath="carteira_virtual.json"):
     global carteira_virtual
     if os.path.exists(filepath):
         with open(filepath, "r") as f:
@@ -1954,7 +1954,7 @@ def plotar_grafico_previsao_real(df, timeframe, asset):
     plt.show()
 
 
-def plotar_grafico_carteira_virtual(log_path="/content/prediction_log.csv"):
+def plotar_grafico_carteira_virtual(log_path="prediction_log.csv"):
     import matplotlib.pyplot as plt
     import os
 
@@ -1994,8 +1994,8 @@ def plotar_grafico_carteira_virtual(log_path="/content/prediction_log.csv"):
     plt.grid(True)
     plt.tight_layout()
 
-    # 🔥 Novo: salvar o gráfico em /content/
-    path = "/content/evolucao_carteira_virtual.png"
+    # 🔥 Novo: salvar o gráfico em 
+    path = "evolucao_carteira_virtual.png"
     plt.savefig(path)
     print(f"💾 Gráfico da carteira salvo em: {path}")
 
@@ -2205,7 +2205,7 @@ def run_analysis(
     criar_prediction_log_padrao()
     carregar_carteira_virtual()
 
-    log_path = "/content/prediction_log.csv"
+    log_path = "prediction_log.csv"
     df_log_old = safe_read_csv(log_path)
     if df_log_old is None:
         df_log_old = pd.DataFrame(columns=["Asset", "Timeframe", "Date"])
@@ -2351,7 +2351,7 @@ def run_analysis(
 
     df_results = pd.DataFrame(results)
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    df_results.to_csv(f"/content/model_results_{timestamp}.csv", index=False)
+    df_results.to_csv(f"model_results_{timestamp}.csv", index=False)
 
     if not df_results.empty:
         df_log = pd.concat([df_log_old, df_results], ignore_index=True).fillna("")

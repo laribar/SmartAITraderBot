@@ -44,14 +44,18 @@ import joblib
 from tensorflow.keras.models import load_model
 
 # Criar pasta onde os modelos serão salvos
-os.makedirs("models", exist_ok=True)
+# BLOCO 1 - CONFIGURAÇÃO DE PASTAS E IMPORTS EXTRA (AJUSTADO)
+MODEL_DIR = "./models"
+os.makedirs(MODEL_DIR, exist_ok=True)
+
 # ====================================================
 # BLOCO 2 - SALVAR E CARREGAR MODELOS TREINADOS
 # ====================================================
 def get_model_path(asset, interval, model_type="xgb"):
-  asset_clean = asset.replace("-", "")
-  ext = "joblib" if model_type == "xgb" else "h5"
-  return f"models/{model_type}_model_{asset_clean}_{interval}.{ext}"
+    asset_clean = asset.replace("-", "")
+    ext = "joblib" if model_type == "xgb" else "h5"
+    return os.path.join(MODEL_DIR, f"{model_type}_model_{asset_clean}_{interval}.{ext}")
+
 
 # --- XGBoost ---
 def save_xgb_model(model, asset, interval):
